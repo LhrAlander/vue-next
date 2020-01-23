@@ -29,7 +29,7 @@ export const createApp = (): App<Element> => {
     })
   }
 
-  const mount = app.mount
+  const { mount, unmount } = app
   app.mount = (component, container, props): any => {
     if (isString(container)) {
       container = document.querySelector(container)!
@@ -52,10 +52,22 @@ export const createApp = (): App<Element> => {
     return mount(component, container, props)
   }
 
+  app.unmount = container => {
+    if (isString(container)) {
+      container = document.querySelector(container)!
+      if (!container) {
+        __DEV__ &&
+          warn(`Failed to unmount app: mount target selector returned null.`)
+        return
+      }
+    }
+    unmount(container)
+  }
+
   return app
 }
 
-// DOM-only runtime helpers
+// DOM-only runtime directive helpers
 export {
   vModelText,
   vModelCheckbox,
@@ -63,14 +75,16 @@ export {
   vModelSelect,
   vModelDynamic
 } from './directives/vModel'
-
 export { withModifiers, withKeys } from './directives/vOn'
+export { vShow } from './directives/vShow'
+
+// DOM-only components
+export { Transition, TransitionProps } from './components/Transition'
+export {
+  TransitionGroup,
+  TransitionGroupProps
+} from './components/TransitionGroup'
 
 // re-export everything from core
 // h, Component, reactivity API, nextTick, flags & types
 export * from '@vue/runtime-core'
-
-// Type augmentations
-export interface ComponentPublicInstance {
-  $el: Element
-}

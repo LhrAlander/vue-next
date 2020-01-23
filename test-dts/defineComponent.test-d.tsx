@@ -1,6 +1,5 @@
-import { describe } from './util'
 import { expectError, expectType } from 'tsd'
-import { createComponent, PropType, ref } from './index'
+import { describe, defineComponent, PropType, ref, createApp } from './index'
 
 describe('with object props', () => {
   interface ExpectedProps {
@@ -13,7 +12,9 @@ describe('with object props', () => {
     ddd: string[]
   }
 
-  const MyComponent = createComponent({
+  type GT = string & { __brand: unknown }
+
+  const MyComponent = defineComponent({
     props: {
       a: Number,
       // required should make property non-void
@@ -58,6 +59,9 @@ describe('with object props', () => {
         c: ref(1),
         d: {
           e: ref('hi')
+        },
+        f: {
+          g: ref('hello' as GT)
         }
       }
     },
@@ -89,6 +93,7 @@ describe('with object props', () => {
       // assert setup context unwrapping
       expectType<number>(this.c)
       expectType<string>(this.d.e)
+      expectType<GT>(this.f.g)
 
       // setup context properties should be mutable
       this.c = 2
@@ -127,7 +132,7 @@ describe('with object props', () => {
 })
 
 describe('type inference w/ optional props declaration', () => {
-  const MyComponent = createComponent({
+  const MyComponent = defineComponent({
     setup(_props: { msg: string }) {
       return {
         a: 1
@@ -150,14 +155,14 @@ describe('type inference w/ optional props declaration', () => {
 })
 
 describe('type inference w/ direct setup function', () => {
-  const MyComponent = createComponent((_props: { msg: string }) => {})
+  const MyComponent = defineComponent((_props: { msg: string }) => {})
   expectType<JSX.Element>(<MyComponent msg="foo" />)
   expectError(<MyComponent />)
   expectError(<MyComponent msg={1} />)
 })
 
 describe('type inference w/ array props declaration', () => {
-  createComponent({
+  defineComponent({
     props: ['a', 'b'],
     setup(props) {
       // props should be readonly
@@ -180,7 +185,7 @@ describe('type inference w/ array props declaration', () => {
 })
 
 describe('type inference w/ options API', () => {
-  createComponent({
+  defineComponent({
     props: { a: Number },
     setup() {
       return {
@@ -239,5 +244,33 @@ describe('type inference w/ options API', () => {
       // computed
       expectType<number>(this.d)
     }
+  })
+})
+
+describe('compatibility w/ createApp', () => {
+  const comp = defineComponent({})
+  createApp().mount(comp, '#hello')
+
+  const comp2 = defineComponent({
+    props: { foo: String }
+  })
+  createApp().mount(comp2, '#hello')
+
+  const comp3 = defineComponent({
+    setup() {
+      return {
+        a: 1
+      }
+    }
+  })
+  createApp().mount(comp3, '#hello')
+})
+
+describe('defineComponent', () => {
+  test('should accept components defined with defineComponent', () => {
+    const comp = defineComponent({})
+    defineComponent({
+      components: { comp }
+    })
   })
 })

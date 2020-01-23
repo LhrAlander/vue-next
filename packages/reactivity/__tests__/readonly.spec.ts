@@ -10,9 +10,9 @@ import {
   unlock,
   effect,
   ref,
-  readonlyProps
+  shallowReadonly
 } from '../src'
-import { mockWarn } from '@vue/runtime-test'
+import { mockWarn } from '@vue/shared'
 
 /**
  * @see https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-4.html
@@ -444,31 +444,39 @@ describe('reactivity/readonly', () => {
     ).toHaveBeenWarned()
   })
 
-  describe('readonlyProps', () => {
-    test('should not unwrap root-level refs', () => {
-      const props = readonlyProps({ n: ref(1) })
-      expect(props.n.value).toBe(1)
+  describe('shallowReadonly', () => {
+    test('should not make non-reactive properties reactive', () => {
+      const props = shallowReadonly({ n: { foo: 1 } })
+      expect(isReactive(props.n)).toBe(false)
     })
 
-    test('should unwrap nested refs', () => {
-      const props = readonlyProps({ foo: { bar: ref(1) } })
-      expect(props.foo.bar).toBe(1)
-    })
-
-    test('should make properties readonly', () => {
-      const props = readonlyProps({ n: ref(1) })
-      props.n.value = 2
-      expect(props.n.value).toBe(1)
-      expect(
-        `Set operation on key "value" failed: target is readonly.`
-      ).toHaveBeenWarned()
-
+    test('should make root level properties readonly', () => {
+      const props = shallowReadonly({ n: 1 })
       // @ts-ignore
       props.n = 2
-      expect(props.n.value).toBe(1)
+      expect(props.n).toBe(1)
       expect(
         `Set operation on key "n" failed: target is readonly.`
       ).toHaveBeenWarned()
+    })
+
+    // to retain 2.x behavior.
+    test('should NOT make nested properties readonly', () => {
+      const props = shallowReadonly({ n: { foo: 1 } })
+      // @ts-ignore
+      props.n.foo = 2
+      expect(props.n.foo).toBe(2)
+      expect(
+        `Set operation on key "foo" failed: target is readonly.`
+      ).not.toHaveBeenWarned()
+    })
+
+    test('should keep reactive properties reactive', () => {
+      const props: any = shallowReadonly({ n: reactive({ foo: 1 }) })
+      unlock()
+      props.n = reactive({ foo: 2 })
+      lock()
+      expect(isReactive(props.n)).toBe(true)
     })
   })
 })

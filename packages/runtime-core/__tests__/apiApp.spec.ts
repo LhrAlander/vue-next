@@ -3,7 +3,6 @@ import {
   h,
   nodeOps,
   serializeInner,
-  mockWarn,
   provide,
   inject,
   resolveComponent,
@@ -13,6 +12,7 @@ import {
   ref,
   getCurrentInstance
 } from '@vue/runtime-test'
+import { mockWarn } from '@vue/shared'
 
 describe('api: createApp', () => {
   mockWarn()
@@ -44,6 +44,26 @@ describe('api: createApp', () => {
     app2.mount(Comp, root3)
     expect(serializeInner(root3)).toBe(``)
     expect(`already been mounted`).toHaveBeenWarned()
+  })
+
+  test('unmount', () => {
+    const Comp = {
+      props: {
+        count: {
+          default: 0
+        }
+      },
+      setup(props: { count: number }) {
+        return () => props.count
+      }
+    }
+
+    const root = nodeOps.createElement('div')
+    const app = createApp()
+    app.mount(Comp, root)
+
+    app.unmount(root)
+    expect(serializeInner(root)).toBe(``)
   })
 
   test('provide', () => {
@@ -242,12 +262,20 @@ describe('api: createApp', () => {
   test('use', () => {
     const PluginA: Plugin = app => app.provide('foo', 1)
     const PluginB: Plugin = {
-      install: app => app.provide('bar', 2)
+      install: (app, arg1, arg2) => app.provide('bar', arg1 + arg2)
     }
+    class PluginC {
+      someProperty = {}
+      static install() {
+        app.provide('baz', 2)
+      }
+    }
+    const PluginD: any = undefined
 
     const app = createApp()
     app.use(PluginA)
-    app.use(PluginB)
+    app.use(PluginB, 1, 1)
+    app.use(PluginC)
 
     const Root = {
       setup() {
@@ -263,6 +291,12 @@ describe('api: createApp', () => {
     app.use(PluginA)
     expect(
       `Plugin has already been applied to target app`
+    ).toHaveBeenWarnedTimes(1)
+
+    app.use(PluginD)
+    expect(
+      `A plugin must either be a function or an object with an "install" ` +
+        `function.`
     ).toHaveBeenWarnedTimes(1)
   })
 
@@ -303,7 +337,7 @@ describe('api: createApp', () => {
     const handler = (app.config.warnHandler = jest.fn(
       (msg, instance, trace) => {
         expect(msg).toMatch(`Component is missing template or render function`)
-        expect(instance).toBe(ctx.renderProxy)
+        expect(instance).toBe(ctx.proxy)
         expect(trace).toMatch(`Hello`)
       }
     ))

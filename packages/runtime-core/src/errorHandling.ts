@@ -14,6 +14,7 @@ export const enum ErrorCodes {
   NATIVE_EVENT_HANDLER,
   COMPONENT_EVENT_HANDLER,
   DIRECTIVE_HOOK,
+  TRANSITION_HOOK,
   APP_ERROR_HANDLER,
   APP_WARN_HANDLER,
   FUNCTION_REF,
@@ -42,12 +43,13 @@ export const ErrorTypeStrings: Record<number | string, string> = {
   [ErrorCodes.NATIVE_EVENT_HANDLER]: 'native event handler',
   [ErrorCodes.COMPONENT_EVENT_HANDLER]: 'component event handler',
   [ErrorCodes.DIRECTIVE_HOOK]: 'directive hook',
+  [ErrorCodes.TRANSITION_HOOK]: 'transition hook',
   [ErrorCodes.APP_ERROR_HANDLER]: 'app errorHandler',
   [ErrorCodes.APP_WARN_HANDLER]: 'app warnHandler',
   [ErrorCodes.FUNCTION_REF]: 'ref function',
   [ErrorCodes.SCHEDULER]:
     'scheduler flush. This is likely a Vue internals bug. ' +
-    'Please open an issue at https://new-issue.vuejs.org/?repo=vuejs/vue'
+    'Please open an issue at https://new-issue.vuejs.org/?repo=vuejs/vue-next'
 }
 
 export type ErrorTypes = LifecycleHooks | ErrorCodes
@@ -72,7 +74,7 @@ export function callWithAsyncErrorHandling(
   instance: ComponentInternalInstance | null,
   type: ErrorTypes,
   args?: unknown[]
-) {
+): any[] {
   if (isFunction(fn)) {
     const res = callWithErrorHandling(fn, instance, type, args)
     if (res != null && !res._isVue && isPromise(res)) {
@@ -83,9 +85,11 @@ export function callWithAsyncErrorHandling(
     return res
   }
 
+  const values = []
   for (let i = 0; i < fn.length; i++) {
-    callWithAsyncErrorHandling(fn[i], instance, type, args)
+    values.push(callWithAsyncErrorHandling(fn[i], instance, type, args))
   }
+  return values
 }
 
 export function handleError(
@@ -97,7 +101,7 @@ export function handleError(
   if (instance) {
     let cur = instance.parent
     // the exposed instance is the render proxy to keep it consistent with 2.x
-    const exposedInstance = instance.renderProxy
+    const exposedInstance = instance.proxy
     // in production the hook receives only the error code
     const errorInfo = __DEV__ ? ErrorTypeStrings[type] : type
     while (cur) {
@@ -126,7 +130,7 @@ export function handleError(
   logError(err, type, contextVNode)
 }
 
-// Test-only toggle for testing the uhandled warning behavior
+// Test-only toggle for testing the unhandled warning behavior
 let forceRecover = false
 export function setErrorRecovery(value: boolean) {
   forceRecover = value
