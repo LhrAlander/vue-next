@@ -1,4 +1,4 @@
-import { parse } from '../../src/parse'
+import { baseParse as parse } from '../../src/parse'
 import { transform } from '../../src/transform'
 import { transformIf } from '../../src/transforms/vIf'
 import { transformElement } from '../../src/transforms/transformElement'
@@ -528,6 +528,20 @@ describe('compiler: v-if', () => {
       expect(realBranch.arguments[1]).toMatchObject(
         createObjectMatcher({ key: `[0]` })
       )
+    })
+
+    test('v-if with key', () => {
+      const {
+        root,
+        node: { codegenNode }
+      } = parseWithIfTransform(`<div v-if="ok" key="some-key"/>`)
+      const branch1 = (codegenNode.expressions[1] as ConditionalExpression)
+        .consequent as CallExpression
+      expect(branch1.arguments).toMatchObject([
+        `"div"`,
+        createObjectMatcher({ key: 'some-key' })
+      ])
+      expect(generate(root).code).toMatchSnapshot()
     })
 
     test.todo('with comments')

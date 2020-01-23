@@ -1,5 +1,5 @@
 import { track, trigger } from './effect'
-import { OperationTypes } from './operations'
+import { TrackOpTypes, TriggerOpTypes } from './operations'
 import { isObject } from '@vue/shared'
 import { reactive, isReactive } from './reactive'
 import { ComputedRef } from './computed'
@@ -23,6 +23,7 @@ export interface Ref<T = any> {
 const convert = <T extends unknown>(val: T): T =>
   isObject(val) ? reactive(val) : val
 
+export function isRef<T>(r: Ref<T> | T): r is Ref<T>
 export function isRef(r: any): r is Ref {
   return r ? r._isRef === true : false
 }
@@ -38,14 +39,14 @@ export function ref(raw?: unknown) {
   const r = {
     _isRef: true,
     get value() {
-      track(r, OperationTypes.GET, 'value')
+      track(r, TrackOpTypes.GET, 'value')
       return raw
     },
     set value(newVal) {
       raw = convert(newVal)
       trigger(
         r,
-        OperationTypes.SET,
+        TriggerOpTypes.SET,
         'value',
         __DEV__ ? { newValue: newVal } : void 0
       )
@@ -84,6 +85,11 @@ function toProxyRef<T extends object, K extends keyof T>(
 
 type UnwrapArray<T> = { [P in keyof T]: UnwrapRef<T[P]> }
 
+// corner case when use narrows type
+// Ex. type RelativePath = string & { __brand: unknown }
+// RelativePath extends object -> true
+type BaseTypes = string | number | boolean
+
 // Recursively unwraps nested value bindings.
 export type UnwrapRef<T> = {
   cRef: T extends ComputedRef<infer V> ? UnwrapRef<V> : T
@@ -92,10 +98,8 @@ export type UnwrapRef<T> = {
   object: { [K in keyof T]: UnwrapRef<T[K]> }
 }[T extends ComputedRef<any>
   ? 'cRef'
-  : T extends Ref
-    ? 'ref'
-    : T extends Array<any>
-      ? 'array'
-      : T extends Function | CollectionTypes
-        ? 'ref' // bail out on types that shouldn't be unwrapped
-        : T extends object ? 'object' : 'ref']
+  : T extends Array<any>
+    ? 'array'
+    : T extends Ref | Function | CollectionTypes | BaseTypes
+      ? 'ref' // bail out on types that shouldn't be unwrapped
+      : T extends object ? 'object' : 'ref']

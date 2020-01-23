@@ -1,15 +1,11 @@
-import {
-  createApp,
-  getCurrentInstance,
-  nodeOps,
-  mockWarn
-} from '@vue/runtime-test'
+import { createApp, getCurrentInstance, nodeOps } from '@vue/runtime-test'
+import { mockWarn } from '@vue/shared'
 import { ComponentInternalInstance } from '../src/component'
 
 describe('component: proxy', () => {
   mockWarn()
 
-  it('data', () => {
+  test('data', () => {
     const app = createApp()
     let instance: ComponentInternalInstance
     let instanceProxy: any
@@ -33,7 +29,7 @@ describe('component: proxy', () => {
     expect(instance!.data.foo).toBe(2)
   })
 
-  it('renderContext', () => {
+  test('renderContext', () => {
     const app = createApp()
     let instance: ComponentInternalInstance
     let instanceProxy: any
@@ -57,7 +53,7 @@ describe('component: proxy', () => {
     expect(instance!.renderContext.foo).toBe(2)
   })
 
-  it('propsProxy', () => {
+  test('propsProxy', () => {
     const app = createApp()
     let instance: ComponentInternalInstance
     let instanceProxy: any
@@ -83,7 +79,7 @@ describe('component: proxy', () => {
     expect(`Attempting to mutate prop "foo"`).toHaveBeenWarned()
   })
 
-  it('methods', () => {
+  test('public properties', () => {
     const app = createApp()
     let instance: ComponentInternalInstance
     let instanceProxy: any
@@ -111,7 +107,7 @@ describe('component: proxy', () => {
     expect(`Attempting to mutate public property "$data"`).toHaveBeenWarned()
   })
 
-  it('sink', async () => {
+  test('sink', async () => {
     const app = createApp()
     let instance: ComponentInternalInstance
     let instanceProxy: any
@@ -128,5 +124,47 @@ describe('component: proxy', () => {
     instanceProxy.foo = 1
     expect(instanceProxy.foo).toBe(1)
     expect(instance!.sink.foo).toBe(1)
+  })
+
+  test('has check', () => {
+    const app = createApp()
+    let instanceProxy: any
+    const Comp = {
+      render() {},
+      props: {
+        msg: String
+      },
+      data() {
+        return {
+          foo: 0
+        }
+      },
+      setup() {
+        return {
+          bar: 1
+        }
+      },
+      mounted() {
+        instanceProxy = this
+      }
+    }
+    app.mount(Comp, nodeOps.createElement('div'), { msg: 'hello' })
+
+    // props
+    expect('msg' in instanceProxy).toBe(true)
+    // data
+    expect('foo' in instanceProxy).toBe(true)
+    // renderContext
+    expect('bar' in instanceProxy).toBe(true)
+    // public properties
+    expect('$el' in instanceProxy).toBe(true)
+
+    // non-existent
+    expect('$foobar' in instanceProxy).toBe(false)
+    expect('baz' in instanceProxy).toBe(false)
+
+    // set non-existent (goes into sink)
+    instanceProxy.baz = 1
+    expect('baz' in instanceProxy).toBe(true)
   })
 })

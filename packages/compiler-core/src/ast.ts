@@ -11,6 +11,7 @@ import {
   FRAGMENT
 } from './runtimeHelpers'
 import { PropsExpression } from './transforms/transformElement'
+import { ImportItem } from './transform'
 
 // Vue template is a platform-agnostic superset of HTML (syntax only).
 // More namespaces like SVG and MathML are declared by platform specific
@@ -94,6 +95,7 @@ export interface RootNode extends Node {
   components: string[]
   directives: string[]
   hoists: JSChildNode[]
+  imports: ImportItem[]
   cached: number
   codegenNode: TemplateChildNode | JSChildNode | undefined
 }
@@ -116,6 +118,7 @@ export interface BaseElementNode extends Node {
     | CallExpression
     | SimpleExpressionNode
     | CacheExpression
+    | SequenceExpression
     | undefined
 }
 
@@ -123,14 +126,18 @@ export interface PlainElementNode extends BaseElementNode {
   tagType: ElementTypes.ELEMENT
   codegenNode:
     | ElementCodegenNode
-    | undefined
     | SimpleExpressionNode // when hoisted
     | CacheExpression // when cached by v-once
+    | SequenceExpression // when turned into a block
+    | undefined
 }
 
 export interface ComponentNode extends BaseElementNode {
   tagType: ElementTypes.COMPONENT
-  codegenNode: ComponentCodegenNode | undefined | CacheExpression // when cached by v-once
+  codegenNode:
+    | ComponentCodegenNode
+    | CacheExpression // when cached by v-once
+    | undefined
 }
 
 export interface SlotOutletNode extends BaseElementNode {
@@ -270,6 +277,7 @@ export interface FunctionExpression extends Node {
   params: ExpressionNode | ExpressionNode[] | undefined
   returns: TemplateChildNode | TemplateChildNode[] | JSChildNode
   newline: boolean
+  isSlot: boolean
 }
 
 export interface SequenceExpression extends Node {
@@ -579,6 +587,7 @@ export function createFunctionExpression(
   params: FunctionExpression['params'],
   returns: FunctionExpression['returns'],
   newline: boolean = false,
+  isSlot: boolean = false,
   loc: SourceLocation = locStub
 ): FunctionExpression {
   return {
@@ -586,6 +595,7 @@ export function createFunctionExpression(
     params,
     returns,
     newline,
+    isSlot,
     loc
   }
 }

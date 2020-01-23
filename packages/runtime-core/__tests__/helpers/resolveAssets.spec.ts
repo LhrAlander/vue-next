@@ -1,13 +1,14 @@
 import {
-  mockWarn,
   createApp,
   nodeOps,
   resolveComponent,
   resolveDirective,
   Component,
   Directive,
-  resolveDynamicComponent
+  resolveDynamicComponent,
+  getCurrentInstance
 } from '@vue/runtime-test'
+import { mockWarn } from '@vue/shared'
 
 describe('resolveAssets', () => {
   test('should work', () => {
@@ -103,10 +104,11 @@ describe('resolveAssets', () => {
       const Root = {
         components: { foo: dynamicComponents.foo },
         setup() {
+          const instance = getCurrentInstance()!
           return () => {
-            foo = resolveDynamicComponent('foo') // <component is="foo"/>
-            bar = resolveDynamicComponent(dynamicComponents.bar) // <component :is="bar"/>, function
-            baz = resolveDynamicComponent(dynamicComponents.baz) // <component :is="baz"/>, object
+            foo = resolveDynamicComponent('foo', instance) // <component is="foo"/>
+            bar = resolveDynamicComponent(dynamicComponents.bar, instance) // <component :is="bar"/>, function
+            baz = resolveDynamicComponent(dynamicComponents.baz, instance) // <component :is="baz"/>, object
           }
         }
       }
